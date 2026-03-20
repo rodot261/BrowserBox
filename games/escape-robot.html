@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Побег от Робота 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .game-stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-item {
+            margin: 5px 0;
+            font-size: 1.1em;
+        }
+
+        .highlight {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 500px;
+        }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #00ff00;
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal p {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #FF512F, #F09819);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(45deg, #888, #666);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+        }
+
+        .btn-settings {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+        }
+
+        .btn-back {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .collect-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(241, 196, 15, 0.9);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .story {
+            font-style: italic;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border-left: 4px solid #FFD700;
+        }
+
+        /* Стили для папки с файлами */
+        .folder-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 200px;
+        }
+
+        .folder-title {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #FFD700;
+            text-align: center;
+        }
+
+        .folder-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .folder-item {
+            width: 30px;
+            height: 40px;
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #000;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+
+        .folder-item.collected {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            transform: scale(1.1);
+        }
+
+        .folder-item::after {
+            content: '.exe';
+            position: absolute;
+            bottom: 2px;
+            font-size: 0.6em;
+            color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Индикатор близости к файлу */
+        .proximity-indicator {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #FFD700;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        /* Стили для карты */
+        .map-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 150;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+        }
+
+        .map-title {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #FFD700;
+            font-size: 1.3em;
+        }
+
+        #mapCanvas {
+            display: block;
+            background: #1a3a5f;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+
+        .map-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .map-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Стили для настроек */
+        .settings-option {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .settings-option label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .theme-btn {
+            padding: 10px 20px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .theme-btn.active {
+            border-color: #FFD700;
+            transform: scale(1.05);
+        }
+
+        .theme-dark {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+        }
+
+        .theme-light {
+            background: linear-gradient(45deg, #ecf0f1, #bdc3c7);
+            color: #2c3e50;
+        }
+
+        .linux-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .linux-note {
+            font-style: italic;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Стили для меню паузы */
+        .pause-menu {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .pause-info {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        /* Стили для экрана перехода на уровень */
+        .level-up-screen {
+            background: linear-gradient(135deg, #00b09b, #96c93d);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameCanvas"></div>
+        
+        <div class="ui-overlay">
+            <div class="game-stats">
+                <div class="stats-item" id="score">Собрано .exe: <span class="highlight">0/4</span></div>
+                <div class="stats-item" id="level">Этаж: <span class="highlight">1</span></div>
+                <div class="stats-item" id="timer">Время: <span class="highlight">0</span></div>
+                <div class="stats-item" id="speed">Скорость робота: <span class="highlight">2.3</span></div>
+            </div>
+            
+            <!-- Папка с собранными файлами -->
+            <div class="folder-container">
+                <div class="folder-title">Собранные файлы</div>
+                <div class="folder-items" id="folderItems">
+                    <!-- Файлы будут добавляться динамически -->
+                </div>
+            </div>
+            
+            <div class="crosshair"></div>
+            
+            <div class="instructions">
+                <p>Управление: <span class="highlight">WASD</span> - движение, <span class="highlight">Мышь</span> - обзор</p>
+                <p>Соберите <span class="highlight">4 .exe файла</span> и найдите <span class="highlight">лифт</span>!</p>
+                <p>Файл собирается <span class="highlight">нажатием левой кнопки мыши</span> при наведении на файл!</p>
+                <p>Нажмите <span class="highlight">T</span> для просмотра карты лабиринта</p>
+                <p>Нажмите <span class="highlight">ESC</span> для открытия меню паузы</p>
+            </div>
+            
+            <div class="collect-notification" id="collectNotification">+1 .exe файл!</div>
+            <div class="proximity-indicator" id="proximityIndicator">Близко к файлу!</div>
+        </div>
+
+        <!-- Карта лабиринта -->
+        <div id="mapScreen" class="screen hidden">
+            <div class="map-container">
+                <div class="map-title">🗺️ Карта лабиринта</div>
+                <canvas id="mapCanvas" width="400" height="400"></canvas>
+                <button class="map-close" onclick="hideMap()">×</button>
+            </div>
+        </div>
+
+        <!-- Меню паузы -->
+        <div id="pauseMenu" class="screen hidden">
+            <div class="modal">
+                <h2>⏸️ Пауза</h2>
+                <div class="pause-info">
+                    <p>Игра приостановлена</p>
+                    <p>Собрано файлов: <span id="pauseFiles">0</span>/4</p>
+                    <p>Время: <span id="pauseTime">0</span> сек.</p>
+                    <p>Текущий этаж: <span id="pauseLevel">1</span></p>
+                </div>
+                
+                <div style="margin: 25px 0;">
+                    <button class="btn" onclick="resumeGame()">▶️ Продолжить игру</button>
+                    <button class="btn btn-danger" onclick="exitToMainMenu()">🚪 Выйти в меню</button>
+                </div>
+                
+                <p style="font-size: 0.9em; opacity: 0.7;">Нажмите ESC чтобы продолжить игру</p>
+            </div>
+        </div>
+
+        <!-- Главное меню -->
+        <div id="mainMenu" class="screen">
+            <div class="modal">
+                <h2>🤖 Побег от Робота 3D 🖥️</h2>
+                <div class="story">
+                    <p><strong>Сюжет:</strong> Вы заблудились в 3D лабиринте, где вас преследует робот-охранник.</p>
+                    <p>Робот начинает охоту сразу и умеет обходить стены! Соберите файлы и найдите лифт до того, как он вас догонит!</p>
+                </div>
+                <div style="margin: 30px 0;">
+                    <button class="btn" onclick="showGameScreen()">🎮 Играть</button>
+                    <button class="btn btn-settings" onclick="showSettings()">⚙️ Настройки</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран начала игры -->
+        <div id="startScreen" class="screen hidden">
+            <div class="modal">
+                <h2>🤖 Побег от Робота 3D 🖥️</h2>
+                <div class="story">
+                    <p><strong>Сюжет:</strong> Вы заблудились в 3D лабиринте, где вас преследует робот-охранник.</p>
+                    <p>Робот начинает охоту сразу и умеет обходить стены! Соберите файлы и найдите лифт до того, как он вас догонит!</p>
+                </div>
+                <p>Соберите 4 .exe файла и найдите лифт, пока робот не поймал вас!</p>
+                <p><strong>Файл собирается нажатием левой кнопки мыши при наведении на файл!</strong></p>
+                <p><strong>Нажмите T для просмотра карты лабиринта</strong></p>
+                <p><strong>Нажмите ESC для открытия меню паузы</strong></p>
+                <button class="btn" onclick="startGame()">Начать игру</button>
+                <button class="btn btn-back" onclick="showMainMenu()">← Назад</button>
+            </div>
+        </div>
+
+        <!-- Экран настроек -->
+        <div id="settingsScreen" class="screen hidden">
+            <div class="modal">
+                <h2>⚙️ Настройки</h2>
+                
+                <div class="settings-option">
+                    <label>Освещение (тема):</label>
+                    <div class="theme-selector">
+                        <button class="theme-btn theme-dark active" onclick="selectTheme('dark')">🌙 Тёмная</button>
+                        <button class="theme-btn theme-light" onclick="selectTheme('light')">☀️ Светлая</button>
+                    </div>
+                </div>
+                
+                <div class="linux-section">
+                    <label>Для тех, кто пользуется Linux:</label>
+                    <div style="margin: 15px 0;">
+                        <button class="btn" disabled>🐧 Кнопка для Linux</button>
+                    </div>
+                    <p class="linux-note">Эта кнопка неактивна, как и было запрошено</p>
+                </div>
+                
+                <button class="btn btn-back" onclick="showMainMenu()">← Назад в меню</button>
+            </div>
+        </div>
+
+        <!-- Экран проигрыша -->
+        <div id="gameOver" class="screen hidden">
+            <div class="modal">
+                <h2>💀 Игра окончена!</h2>
+                <p>Робот поймал вас! 🤖</p>
+                <p>Попробуйте снова и будьте осторожнее!</p>
+                <p><strong>Собрано файлов: <span id="finalFiles">0</span>/4</strong></p>
+                <p><strong>Время выживания: <span id="finalTime">0</span> сек.</strong></p>
+                <p><strong>Достигнутый этаж: <span id="finalLevel">1</span></strong></p>
+                <button class="btn" onclick="restartGame()">Попробовать снова</button>
+                <button class="btn btn-back" onclick="showMainMenu()">В главное меню</button>
+            </div>
+        </div>
+
+        <!-- Экран завершения уровня -->
+        <div id="levelComplete" class="screen hidden">
+            <div class="modal">
+                <h2>🎉 Этаж пройден!</h2>
+                <p>Вы успешно избежали робота и собрали все файлы!</p>
+                <p>Лифт активирован! Найдите его чтобы подняться на следующий этаж!</p>
+                <p><strong>Собрано файлов: <span id="completedFiles">4</span>/4</strong></p>
+                <p><strong>Время прохождения: <span id="completedTime">0</span> сек.</strong></p>
+                <button class="btn" onclick="continueToNextLevel()">Продолжить на этом этаже</button>
+                <button class="btn btn-back" onclick="showMainMenu()">В главное меню</button>
+            </div>
+        </div>
+
+        <!-- Экран перехода на следующий уровень -->
+        <div id="levelUpScreen" class="screen hidden">
+            <div class="level-up-screen">
+                <h2>🚀 Переход на следующий этаж!</h2>
+                <p>Поздравляем! Вы нашли лифт и поднялись на <span id="nextLevelNumber">2</span> этаж!</p>
+                <p>На новом этаже вас ждет <span id="nextLevelFiles">5</span> файлов для сбора!</p>
+                <p>Удачи в новом испытании!</p>
+                <button class="btn" onclick="startNextLevel()">Начать следующий этаж</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные для управления темами и паузой
+        let currentTheme = 'dark';
+        let isGamePaused = false;
+
+        // Функции для навигации по меню
+        function showMainMenu() {
+            document.getElementById('mainMenu').classList.remove('hidden');
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('settingsScreen').classList.add('hidden');
+            document.getElementById('gameOver').classList.add('hidden');
+            document.getElementById('levelComplete').classList.add('hidden');
+            document.getElementById('pauseMenu').classList.add('hidden');
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            
+            // Показываем курсор в меню
+            document.body.style.cursor = 'default';
+            
+            // Останавливаем игру, если она запущена
+            if (game && game.timerInterval) {
+                clearInterval(game.timerInterval);
+            }
+            isGamePaused = false;
+        }
+
+        function showGameScreen() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            // Показываем курсор в меню
+            document.body.style.cursor = 'default';
+        }
+
+        function showSettings() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('settingsScreen').classList.remove('hidden');
+            // Показываем курсор в меню
+            document.body.style.cursor = 'default';
+        }
+
+        function selectTheme(theme) {
+            currentTheme = theme;
+            
+            // Обновляем активную кнопку темы
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (theme === 'dark') {
+                document.querySelector('.theme-dark').classList.add('active');
+                // Применяем тёмную тему
+                document.body.style.background = '#000';
+            } else {
+                document.querySelector('.theme-light').classList.add('active');
+                // Применяем светлую тему
+                document.body.style.background = '#ecf0f1';
+            }
+        }
+
+        // Функции для меню паузы
+        function togglePauseMenu() {
+            if (game && game.gameState === 'playing') {
+                if (isGamePaused) {
+                    resumeGame();
+                } else {
+                    showPauseMenu();
+                }
+            }
+        }
+
+        function showPauseMenu() {
+            if (game && game.gameState === 'playing') {
+                isGamePaused = true;
+                document.getElementById('pauseMenu').classList.remove('hidden');
+                game.controls.unlock();
+                
+                // Показываем курсор в меню паузы
+                document.body.style.cursor = 'default';
+                
+                // Обновляем информацию в меню паузы
+                document.getElementById('pauseFiles').textContent = game.exeCollected;
+                document.getElementById('pauseTime').textContent = game.gameTime;
+                document.getElementById('pauseLevel').textContent = game.currentLevel;
+            }
+        }
+
+        function resumeGame() {
+            isGamePaused = false;
+            document.getElementById('pauseMenu').classList.add('hidden');
+            // Скрываем курсор при возврате в игру
+            document.body.style.cursor = 'none';
+            if (game && game.gameState === 'playing') {
+                game.controls.lock();
+            }
+        }
+
+        function exitToMainMenu() {
+            if (game && game.timerInterval) {
+                clearInterval(game.timerInterval);
+            }
+            // Показываем курсор при выходе в меню
+            document.body.style.cursor = 'default';
+            showMainMenu();
+        }
+
+        // Основной класс игры
+        class EscapeFromRobot3D {
+            constructor(level = 1) {
+                // Игровые переменные
+                this.gameState = 'playing';
+                this.currentLevel = level;
+                this.exeCollected = 0;
+                this.totalExe = level === 1 ? 4 : 5;
+                this.gameTime = 0;
+                this.elevatorActive = false;
+                this.timerInterval = null;
+                this.mapVisible = false;
+                
+                // Three.js переменные
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                
+                // Игровые объекты
+                this.player = null;
+                this.robot = null;
+                this.exeFiles = [];
+                this.elevator = null;
+                this.walls = [];
+                this.keys = {};
+                
+                // Физика
+                this.moveForward = false;
+                this.moveBackward = false;
+                this.moveLeft = false;
+                this.moveRight = false;
+                
+                // Настройки скорости
+                this.moveSpeed = 0.3;
+                this.sprintMultiplier = 1.8;
+                this.isSprinting = false;
+                
+                // Коллизии
+                this.playerRadius = 0.5;
+                this.playerHeight = 2;
+
+                // Настройки сбора файлов
+                this.collectionDistance = 3.0;
+                this.proximityDistance = 6.0;
+                this.manualCollectionDistance = 5.0;
+                
+                // Физика движения
+                this.velocity = new THREE.Vector3();
+                this.direction = new THREE.Vector3();
+
+                // Карта
+                this.mapCanvas = null;
+                this.mapContext = null;
+                this.mapData = [];
+
+                // Улучшенный ИИ робота
+                this.robotPath = [];
+                this.robotTargetPosition = null;
+                this.robotReplanTimer = 0;
+                this.robotStuckTimer = 0;
+                this.robotLastPosition = null;
+                this.robotState = 'hunting'; // hunting, pathfinding, stuck
+
+                this.init();
+            }
+            
+            init() {
+                this.setupScene();
+                this.createEnvironment();
+                this.createPlayer();
+                this.createRobot();
+                this.createExeFiles();
+                this.setupControls();
+                this.setupEventListeners();
+                this.createFolderUI();
+                this.setupMap();
+                this.startTimer();
+                this.animate();
+            }
+            
+            setupScene() {
+                // Сцена
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x4a6fa5);
+                this.scene.fog = new THREE.Fog(0x4a6fa5, 40, 150);
+                
+                // Камера
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 5, 0);
+                
+                // Рендерер
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = false;
+                
+                // Очищаем canvas перед добавлением нового
+                const gameCanvas = document.getElementById('gameCanvas');
+                gameCanvas.innerHTML = '';
+                gameCanvas.appendChild(this.renderer.domElement);
+                
+                // Освещение
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                directionalLight.position.set(40, 60, 30);
+                this.scene.add(directionalLight);
+
+                const pointLight = new THREE.PointLight(0xffffff, 0.4, 150);
+                pointLight.position.set(0, 25, 0);
+                this.scene.add(pointLight);
+            }
+            
+            createEnvironment() {
+                // Пол
+                const floorGeometry = new THREE.PlaneGeometry(300, 300);
+                const floorMaterial = new THREE.MeshStandardMaterial({ 
+                    color: this.currentLevel === 1 ? 0x5d8aa8 : (this.currentLevel === 2 ? 0x4a708b : 0x3a607b),
+                    roughness: 0.6,
+                    metalness: 0.1
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                this.scene.add(floor);
+                
+                // Стены лабиринта
+                this.createMaze();
+            }
+            
+            createMaze() {
+                const wallMaterial = new THREE.MeshStandardMaterial({ 
+                    color: this.currentLevel === 1 ? 0x6b8ba4 : (this.currentLevel === 2 ? 0x5a7b94 : 0x4a6b84),
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+                
+                const wallPositions = [
+                    // Внешние стены (огромный лабиринт 200x200)
+                    { position: [0, 5, -100], size: [200, 10, 1] },
+                    { position: [0, 5, 100], size: [200, 10, 1] },
+                    { position: [-100, 5, 0], size: [1, 10, 200] },
+                    { position: [100, 5, 0], size: [1, 10, 200] },
+                    
+                    // СРЕДНИЙ ЧЕТЫРЕХУГОЛЬНИК С ПРОХОДАМИ К ФАЙЛАМ
+                    // Северная стена с проходом посередине
+                    { position: [-50, 5, -75], size: [50, 10, 1] },
+                    { position: [50, 5, -75], size: [50, 10, 1] },
+                    // Южная стена с проходом посередине
+                    { position: [-50, 5, 75], size: [50, 10, 1] },
+                    { position: [50, 5, 75], size: [50, 10, 1] },
+                    // Западная стена с проходом посередине
+                    { position: [-75, 5, -50], size: [1, 10, 50] },
+                    { position: [-75, 5, 50], size: [1, 10, 50] },
+                    // Восточная стена с проходом посередине
+                    { position: [75, 5, -50], size: [1, 10, 50] },
+                    { position: [75, 5, 50], size: [1, 10, 50] },
+                    
+                    // Центральные комнаты (С ПРОХОДАМИ В КАЖДОЙ СТЕНЕ)
+                    { position: [-40, 5, -40], size: [60, 10, 1] },  // Северная стена с проходом
+                    { position: [40, 5, -40], size: [60, 10, 1] },   // Северная стена с проходом
+                    { position: [-40, 5, 40], size: [60, 10, 1] },   // Южная стена с проходом
+                    { position: [40, 5, 40], size: [60, 10, 1] },    // Южная стена с проходом
+                    
+                    { position: [-40, 5, -40], size: [1, 10, 60] },  // Западная стена с проходом
+                    { position: [40, 5, -40], size: [1, 10, 60] },   // Западная стена с проходом
+                    { position: [-40, 5, 40], size: [1, 10, 60] },   // Восточная стена с проходом
+                    { position: [40, 5, 40], size: [1, 10, 60] },    // Восточная стена с проходом
+                    
+                    // Внутренние перегородки центра (С ПРОХОДАМИ)
+                    { position: [0, 5, -20], size: [30, 10, 1] },    // Север с проходом
+                    { position: [0, 5, 20], size: [30, 10, 1] },     // Юг с проходом
+                    { position: [-20, 5, 0], size: [1, 10, 30] },    // Запад с проходом
+                    { position: [20, 5, 0], size: [1, 10, 30] },     // Восток с проходом
+                    
+                    // Верхний левый сектор (С ПРОХОДАМИ)
+                    { position: [-90, 5, -60], size: [15, 10, 1] },  // Север с проходом
+                    { position: [-90, 5, -30], size: [15, 10, 1] },  // Центр с проходом
+                    { position: [-90, 5, 0], size: [15, 10, 1] },    // Юг с проходом
+                    { position: [-60, 5, -90], size: [1, 10, 15] },  // Запад с проходом
+                    { position: [-30, 5, -90], size: [1, 10, 15] },  // Центр с проходом
+                    { position: [0, 5, -90], size: [1, 10, 15] },    // Восток с проходом
+                    
+                    // Верхний правый сектор (С ПРОХОДАМИ)
+                    { position: [90, 5, -60], size: [15, 10, 1] },   // Север с проходом
+                    { position: [90, 5, -30], size: [15, 10, 1] },   // Центр с проходом
+                    { position: [90, 5, 0], size: [15, 10, 1] },     // Юг с проходом
+                    { position: [60, 5, -90], size: [1, 10, 15] },   // Запад с проходом
+                    { position: [30, 5, -90], size: [1, 10, 15] },   // Центр с проходом
+                    { position: [0, 5, -90], size: [1, 10, 15] },    // Восток с проходом
+                    
+                    // Нижний левый сектор (С ПРОХОДАМИ)
+                    { position: [-90, 5, 60], size: [15, 10, 1] },   // Север с проходом
+                    { position: [-90, 5, 30], size: [15, 10, 1] },   // Центр с проходом
+                    { position: [-90, 5, 0], size: [15, 10, 1] },    // Юг с проходом
+                    { position: [-60, 5, 90], size: [1, 10, 15] },   // Запад с проходом
+                    { position: [-30, 5, 90], size: [1, 10, 15] },   // Центр с проходом
+                    { position: [0, 5, 90], size: [1, 10, 15] },     // Восток с проходом
+                    
+                    // Нижний правый сектор (С ПРОХОДАМИ)
+                    { position: [90, 5, 60], size: [15, 10, 1] },    // Север с проходом
+                    { position: [90, 5, 30], size: [15, 10, 1] },    // Центр с проходом
+                    { position: [90, 5, 0], size: [15, 10, 1] },     // Юг с проходом
+                    { position: [60, 5, 90], size: [1, 10, 15] },    // Запад с проходом
+                    { position: [30, 5, 90], size: [1, 10, 15] },    // Центр с проходом
+                    { position: [0, 5, 90], size: [1, 10, 15] },     // Восток с проходом
+                    
+                    // Дополнительные лабиринтные структуры (С ПРОХОДАМИ)
+                    { position: [-50, 5, -80], size: [15, 10, 1] },  // Север с проходом
+                    { position: [-50, 5, -50], size: [15, 10, 1] },  // Юг с проходом
+                    { position: [-80, 5, -50], size: [1, 10, 15] },  // Запад с проходом
+                    { position: [-50, 5, -50], size: [1, 10, 15] },  // Восток с проходом
+                    
+                    { position: [50, 5, -80], size: [15, 10, 1] },   // Север с проходом
+                    { position: [50, 5, -50], size: [15, 10, 1] },   // Юг с проходом
+                    { position: [80, 5, -50], size: [1, 10, 15] },   // Запад с проходом
+                    { position: [50, 5, -50], size: [1, 10, 15] },   // Восток с проходом
+                    
+                    { position: [-50, 5, 80], size: [15, 10, 1] },   // Север с проходом
+                    { position: [-50, 5, 50], size: [15, 10, 1] },   // Юг с проходом
+                    { position: [-80, 5, 50], size: [1, 10, 15] },   // Запад с проходом
+                    { position: [-50, 5, 50], size: [1, 10, 15] },   // Восток с проходом
+                    
+                    { position: [50, 5, 80], size: [15, 10, 1] },    // Север с проходом
+                    { position: [50, 5, 50], size: [15, 10, 1] },    // Юг с проходом
+                    { position: [80, 5, 50], size: [1, 10, 15] },    // Запад с проходом
+                    { position: [50, 5, 50], size: [1, 10, 15] },    // Восток с проходом
+                    
+                    // Спиральные структуры (С ПРОХОДАМИ)
+                    { position: [-20, 5, -70], size: [35, 10, 1] },  // Север с проходом
+                    { position: [-20, 5, -40], size: [35, 10, 1] },  // Юг с проходом
+                    { position: [-50, 5, -55], size: [1, 10, 25] },  // Запад с проходом
+                    { position: [-20, 5, -55], size: [1, 10, 25] },  // Восток с проходом
+                    
+                    { position: [20, 5, 70], size: [35, 10, 1] },    // Север с проходом
+                    { position: [20, 5, 40], size: [35, 10, 1] },    // Юг с проходом
+                    { position: [50, 5, 55], size: [1, 10, 25] },    // Запад с проходом
+                    { position: [20, 5, 55], size: [1, 10, 25] },    // Восток с проходом
+                    
+                    // Длинные коридоры (С ПРОХОДАМИ)
+                    { position: [-10, 5, -95], size: [15, 10, 1] },  // Север с проходом
+                    { position: [-10, 5, 95], size: [15, 10, 1] },   // Юг с проходом
+                    { position: [-95, 5, -10], size: [1, 10, 15] },  // Запад с проходом
+                    { position: [95, 5, 10], size: [1, 10, 15] },    // Восток с проходом
+                    
+                    // Изолированные комнаты (С ПРОХОДАМИ)
+                    { position: [-70, 5, -70], size: [8, 10, 1] },   // Север с проходом
+                    { position: [-70, 5, -70], size: [1, 10, 8] },   // Запад с проходом
+                    { position: [-70, 5, -60], size: [8, 10, 1] },   // Юг с проходом
+                    { position: [-60, 5, -70], size: [1, 10, 8] },   // Восток с проходом
+                    
+                    { position: [70, 5, 70], size: [8, 10, 1] },     // Север с проходом
+                    { position: [70, 5, 70], size: [1, 10, 8] },     // Запад с проходом
+                    { position: [70, 5, 60], size: [8, 10, 1] },     // Юг с проходом
+                    { position: [60, 5, 70], size: [1, 10, 8] },     // Восток с проходом
+                    
+                    // Зигзагообразные проходы (С ПРОХОДАМИ)
+                    { position: [-30, 5, -85], size: [8, 10, 1] },   // Север с проходом
+                    { position: [-20, 5, -85], size: [8, 10, 1] },   // Юг с проходом
+                    { position: [-25, 5, -80], size: [1, 10, 8] },   // Центр с проходом
+                    
+                    { position: [30, 5, 85], size: [8, 10, 1] },     // Север с проходом
+                    { position: [20, 5, 85], size: [8, 10, 1] },     // Юг с проходом
+                    { position: [25, 5, 80], size: [1, 10, 8] },     // Центр с проходом
+                    
+                    // Основные соединительные коридоры
+                    { position: [0, 5, -60], size: [20, 10, 1] },    // Северный коридор
+                    { position: [0, 5, 60], size: [20, 10, 1] },     // Южный коридор
+                    { position: [-60, 5, 0], size: [1, 10, 20] },    // Западный коридор
+                    { position: [60, 5, 0], size: [1, 10, 20] },     // Восточный коридор
+                ];
+                
+                wallPositions.forEach(wallData => {
+                    const wallGeometry = new THREE.BoxGeometry(...wallData.size);
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(...wallData.position);
+                    wall.userData = { type: 'wall' };
+                    
+                    // Создаем bounding box для коллизий
+                    wall.geometry.computeBoundingBox();
+                    wall.boundingBox = wall.geometry.boundingBox.clone();
+                    
+                    this.scene.add(wall);
+                    this.walls.push(wall);
+                    
+                    // Сохраняем данные для карты
+                    this.mapData.push({
+                        x: wallData.position[0],
+                        z: wallData.position[2],
+                        width: wallData.size[0],
+                        depth: wallData.size[2]
+                    });
+                });
+            }
+            
+            createPlayer() {
+                this.player = this.camera;
+                // Стартовая позиция игрока - в центре
+                this.player.position.set(0, 5, 0);
+            }
+            
+            createRobot() {
+                const robotGroup = new THREE.Group();
+                
+                // РОБОТ - размером с игрока (высота ~2 единицы)
+                
+                // Тело робота
+                const bodyGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.6);
+                const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                robotGroup.add(body);
+                
+                // Голова робота
+                const headGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.6);
+                const headMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.0;
+                robotGroup.add(head);
+                
+                // Глаза робота (красные светодиоды)
+                const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+                const eyeMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0xff0000,
+                    emissiveIntensity: 0.5
+                });
+                
+                const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                leftEye.position.set(0.15, 1.0, 0.35);
+                robotGroup.add(leftEye);
+                
+                const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                rightEye.position.set(-0.15, 1.0, 0.35);
+                robotGroup.add(rightEye);
+                
+                // Руки робота
+                const armGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+                const armMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+                
+                const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+                leftArm.position.set(0.5, 0.2, 0);
+                robotGroup.add(leftArm);
+                
+                const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+                rightArm.position.set(-0.5, 0.2, 0);
+                robotGroup.add(rightArm);
+                
+                // Ноги робота
+                const legGeometry = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+                const legMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+                
+                const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+                leftLeg.position.set(0.2, -0.9, 0);
+                robotGroup.add(leftLeg);
+                
+                const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+                rightLeg.position.set(-0.2, -0.9, 0);
+                robotGroup.add(rightLeg);
+                
+                // Антенна на голове
+                const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8);
+                const antennaMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+                const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+                antenna.position.set(0, 1.4, 0);
+                antenna.rotation.x = Math.PI / 2;
+                robotGroup.add(antenna);
+                
+                // Робот появляется в безопасном месте лабиринта (не в стенах)
+                const safeRobotPositions = [
+                    [0, 1.5, -80], [0, 1.5, 80],
+                    [-80, 1.5, 0], [80, 1.5, 0],
+                    [-70, 1.5, -70], [70, 1.5, -70],
+                    [-70, 1.5, 70], [70, 1.5, 70],
+                    [-50, 1.5, -50], [50, 1.5, -50],
+                    [-50, 1.5, 50], [50, 1.5, 50]
+                ];
+                
+                // Выбираем случайную позицию и проверяем, что она не в стене
+                let randomPos;
+                let positionValid = false;
+                let attempts = 0;
+                
+                while (!positionValid && attempts < 20) {
+                    randomPos = safeRobotPositions[Math.floor(Math.random() * safeRobotPositions.length)];
+                    positionValid = !this.checkWallCollisionForRobot(randomPos);
+                    attempts++;
+                }
+                
+                // Если не нашли валидную позицию, используем первую
+                if (!positionValid) {
+                    randomPos = [0, 1.5, -80];
+                }
+                
+                robotGroup.position.set(randomPos[0], randomPos[1], randomPos[2]);
+                this.scene.add(robotGroup);
+                this.robot = robotGroup;
+                this.robot.speed = 2.3 + (this.currentLevel - 1) * 0.5; // Скорость увеличивается с каждым уровнем
+                
+                // Инициализация ИИ робота
+                this.robotLastPosition = new THREE.Vector3(randomPos[0], randomPos[1], randomPos[2]);
+                this.robotReplanTimer = 0;
+                this.robotStuckTimer = 0;
+                this.robotState = 'hunting';
+                
+                // Добавляем bounding box для робота
+                this.robot.boundingBox = new THREE.Box3().setFromCenterAndSize(
+                    new THREE.Vector3(randomPos[0], randomPos[1], randomPos[2]),
+                    new THREE.Vector3(0.8, 2, 0.6)
+                );
+                
+                // Сразу начинаем охоту - планируем первый путь
+                this.planRobotPath();
+            }
+            
+            // Проверка коллизий для позиционирования робота
+            checkWallCollisionForRobot(position) {
+                const robotBox = new THREE.Box3().setFromCenterAndSize(
+                    new THREE.Vector3(position[0], position[1], position[2]),
+                    new THREE.Vector3(0.8, 2, 0.6) // Уменьшенный размер для робота
+                );
+                
+                for (const wall of this.walls) {
+                    const wallBox = new THREE.Box3().setFromObject(wall);
+                    if (robotBox.intersectsBox(wallBox)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            createExeFiles() {
+                const exeGeometry = new THREE.BoxGeometry(1, 1, 1);
+                const exeMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x2ecc71, // ЗЕЛЕНЫЙ ЦВЕТ вместо желтого
+                    emissive: 0x2ecc71, // ЗЕЛЕНЫЙ ЦВЕТ вместо желтого
+                    emissiveIntensity: 0.5
+                });
+                
+                // Список безопасных позиций внутри лабиринта с доступом
+                const safePositions = [
+                    [0, 1, 0],        // Центр
+                    [0, 1, -50],      // Северный коридор
+                    [0, 1, 50],       // Южный коридор
+                    [-50, 1, 0],      // Западный коридор
+                    [50, 1, 0],       // Восточный коридор
+                    [-30, 1, -30],    // Верхний левый центр
+                    [30, 1, -30],     // Верхний правый центр
+                    [-30, 1, 30],     // Нижний левый центр
+                    [30, 1, 30],      // Нижний правый центр
+                    [-80, 1, -80],    // Верхний левый угол (с проходом)
+                    [80, 1, -80],     // Верхний правый угол (с проходом)
+                    [-80, 1, 80],     // Нижний левый угол (с проходом)
+                    [80, 1, 80],      // Нижний правый угол (с проходом)
+                    [0, 1, -80],      // Северный проход
+                    [0, 1, 80],       // Южный проход
+                    [-80, 1, 0],      // Западный проход
+                    [80, 1, 0],       // Восточный проход
+                    // Дополнительные позиции для уровней 2 и 3
+                    [-20, 1, -60], [20, 1, -60],
+                    [-60, 1, -20], [60, 1, -20],
+                    [-60, 1, 20], [60, 1, 20],
+                    [-20, 1, 60], [20, 1, 60]
+                ];
+                
+                // Перемешиваем массив позиций
+                const shuffledPositions = this.shuffleArray([...safePositions]);
+                
+                // Создаем файлы в разных позициях в зависимости от уровня
+                for (let i = 0; i < this.totalExe; i++) {
+                    const selectedPosition = shuffledPositions[i];
+                    
+                    const exeFile = new THREE.Mesh(exeGeometry, exeMaterial);
+                    exeFile.position.set(selectedPosition[0], selectedPosition[1], selectedPosition[2]);
+                    exeFile.userData = { type: 'exe', collected: false };
+                    
+                    this.scene.add(exeFile);
+                    this.exeFiles.push(exeFile);
+                }
+            }
+            
+            // Функция для перемешивания массива
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            createElevator() {
+                const elevatorGeometry = new THREE.CylinderGeometry(3, 3, 6, 16);
+                const elevatorMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x3498db,
+                    emissive: 0x3498db,
+                    emissiveIntensity: 0.7
+                });
+                
+                this.elevator = new THREE.Mesh(elevatorGeometry, elevatorMaterial);
+                
+                // Позиция лифта в дальнем углу лабиринта
+                const elevatorPositions = [
+                    [90, 3, 90], [-90, 3, 90], [90, 3, -90], [-90, 3, -90]
+                ];
+                const randomPos = elevatorPositions[Math.floor(Math.random() * elevatorPositions.length)];
+                
+                this.elevator.position.set(randomPos[0], randomPos[1], randomPos[2]);
+                this.elevator.userData = { type: 'elevator' };
+                this.scene.add(this.elevator);
+            }
+            
+            createFolderUI() {
+                const folderItems = document.getElementById('folderItems');
+                folderItems.innerHTML = '';
+                
+                // Создаем файлы в зависимости от уровня
+                for (let i = 0; i < this.totalExe; i++) {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'folder-item';
+                    fileElement.id = `file-${i}`;
+                    fileElement.textContent = `file${i+1}`;
+                    folderItems.appendChild(fileElement);
+                }
+            }
+            
+            updateFolderUI() {
+                for (let i = 0; i < this.totalExe; i++) {
+                    const fileElement = document.getElementById(`file-${i}`);
+                    if (fileElement) {
+                        if (i < this.exeCollected) {
+                            fileElement.classList.add('collected');
+                        } else {
+                            fileElement.classList.remove('collected');
+                        }
+                    }
+                }
+            }
+            
+            setupControls() {
+                this.controls = new THREE.PointerLockControls(this.camera, document.body);
+                
+                // Обработчики для управления курсором
+                this.controls.addEventListener('lock', () => {
+                    document.body.style.cursor = 'none';
+                });
+
+                this.controls.addEventListener('unlock', () => {
+                    document.body.style.cursor = 'default';
+                });
+                
+                document.addEventListener('click', () => {
+                    if (this.gameState === 'playing' && !this.controls.isLocked && !isGamePaused) {
+                        this.controls.lock();
+                    }
+                });
+            }
+            
+            setupEventListeners() {
+                document.addEventListener('keydown', (event) => {
+                    if (isGamePaused) return;
+                    
+                    switch (event.code) {
+                        case 'ArrowUp':
+                        case 'KeyW':
+                            this.moveForward = true;
+                            break;
+                        case 'ArrowLeft':
+                        case 'KeyA':
+                            this.moveLeft = true;
+                            break;
+                        case 'ArrowDown':
+                        case 'KeyS':
+                            this.moveBackward = true;
+                            break;
+                        case 'ArrowRight':
+                        case 'KeyD':
+                            this.moveRight = true;
+                            break;
+                        case 'ShiftLeft':
+                        case 'ShiftRight':
+                            this.isSprinting = true;
+                            break;
+                        case 'KeyT':
+                            this.toggleMap();
+                            break;
+                        case 'Escape':
+                            event.preventDefault();
+                            togglePauseMenu();
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', (event) => {
+                    if (isGamePaused) return;
+                    
+                    switch (event.code) {
+                        case 'ArrowUp':
+                        case 'KeyW':
+                            this.moveForward = false;
+                            break;
+                        case 'ArrowLeft':
+                        case 'KeyA':
+                            this.moveLeft = false;
+                            break;
+                        case 'ArrowDown':
+                        case 'KeyS':
+                            this.moveBackward = false;
+                            break;
+                        case 'ArrowRight':
+                        case 'KeyD':
+                            this.moveRight = false;
+                            break;
+                        case 'ShiftLeft':
+                        case 'ShiftRight':
+                            this.isSprinting = false;
+                            break;
+                    }
+                });
+                
+                // Обработчик для левой кнопки мыши - сбор файла
+                document.addEventListener('mousedown', (event) => {
+                    if (isGamePaused || !this.controls.isLocked) return;
+                    
+                    // Проверяем, что нажата левая кнопка мыши
+                    if (event.button === 0) {
+                        this.collectFileWithMouse();
+                    }
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            // Сбор файла с помощью мыши
+            collectFileWithMouse() {
+                // Создаем Raycaster для определения, на что смотрит игрок
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+                
+                // Проверяем пересечение с файлами
+                const intersects = raycaster.intersectObjects(this.exeFiles);
+                
+                if (intersects.length > 0) {
+                    const file = intersects[0].object;
+                    const distance = file.position.distanceTo(this.player.position);
+                    
+                    // Проверяем, что файл достаточно близко
+                    if (distance <= this.manualCollectionDistance) {
+                        this.collectFile(file);
+                    }
+                }
+            }
+            
+            // Настройка карты
+            setupMap() {
+                this.mapCanvas = document.getElementById('mapCanvas');
+                this.mapContext = this.mapCanvas.getContext('2d');
+            }
+            
+            // Переключение отображения карты
+            toggleMap() {
+                if (this.gameState !== 'playing') return;
+                
+                this.mapVisible = !this.mapVisible;
+                const mapScreen = document.getElementById('mapScreen');
+                
+                if (this.mapVisible) {
+                    mapScreen.classList.remove('hidden');
+                    this.drawMap();
+                    this.controls.unlock();
+                } else {
+                    mapScreen.classList.add('hidden');
+                    if (this.gameState === 'playing' && !isGamePaused) {
+                        this.controls.lock();
+                    }
+                }
+            }
+            
+            // Отрисовка карты
+            drawMap() {
+                const ctx = this.mapContext;
+                const width = this.mapCanvas.width;
+                const height = this.mapCanvas.height;
+                
+                // Очищаем canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Рисуем фон
+                ctx.fillStyle = '#1a3a5f';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Масштабируем координаты лабиринта (от -100 до 100) к размерам canvas
+                const scale = width / 200;
+                const offsetX = width / 2;
+                const offsetY = height / 2;
+                
+                // Рисуем стены
+                ctx.fillStyle = '#6b8ba4';
+                this.mapData.forEach(wall => {
+                    const x = offsetX + wall.x * scale - wall.width * scale / 2;
+                    const y = offsetY + wall.z * scale - wall.depth * scale / 2;
+                    const w = wall.width * scale;
+                    const h = wall.depth * scale;
+                    
+                    ctx.fillRect(x, y, w, h);
+                });
+                
+                // Рисуем файлы - ЗЕЛЕНЫЙ ЦВЕТ
+                ctx.fillStyle = '#2ecc71'; // ЗЕЛЕНЫЙ ЦВЕТ вместо желтого
+                this.exeFiles.forEach(file => {
+                    if (!file.userData.collected) {
+                        const x = offsetX + file.position.x * scale - 2;
+                        const y = offsetY + file.position.z * scale - 2;
+                        
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Обводка для файлов
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                });
+                
+                // Рисуем лифт, если активирован
+                if (this.elevatorActive && this.elevator) {
+                    ctx.fillStyle = '#3498db';
+                    const x = offsetX + this.elevator.position.x * scale - 3;
+                    const y = offsetY + this.elevator.position.z * scale - 3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Обводка для лифта
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                
+                // Рисуем игрока
+                ctx.fillStyle = '#3498db';
+                const playerX = offsetX + this.player.position.x * scale;
+                const playerY = offsetY + this.player.position.z * scale;
+                
+                ctx.beginPath();
+                ctx.arc(playerX, playerY, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Стрелка направления игрока
+                const direction = new THREE.Vector3();
+                this.camera.getWorldDirection(direction);
+                const arrowLength = 8;
+                const arrowX = playerX + direction.x * arrowLength;
+                const arrowY = playerY + direction.z * arrowLength;
+                
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(playerX, playerY);
+                ctx.lineTo(arrowX, arrowY);
+                ctx.stroke();
+                
+                // Рисуем робота
+                ctx.fillStyle = '#e74c3c';
+                const robotX = offsetX + this.robot.position.x * scale;
+                const robotY = offsetY + this.robot.position.z * scale;
+                
+                ctx.beginPath();
+                ctx.arc(robotX, robotY, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Легенда
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.fillText('🧭 Игрок', 10, 20);
+                ctx.fillText('🤖 Робот', 10, 40);
+                ctx.fillText('📁 Файлы', 10, 60);
+                if (this.elevatorActive) {
+                    ctx.fillText('🚪 Лифт', 10, 80);
+                }
+                ctx.fillText(`Этаж: ${this.currentLevel}`, 10, 100);
+            }
+            
+            // УЛУЧШЕННАЯ СИСТЕМА ХОДЬБЫ
+            updatePlayer() {
+                if (this.controls.isLocked && this.gameState === 'playing' && !isGamePaused) {
+                    const currentMoveSpeed = this.isSprinting ? this.moveSpeed * this.sprintMultiplier : this.moveSpeed;
+                    
+                    // Получаем направление взгляда камеры
+                    this.camera.getWorldDirection(this.direction);
+                    this.direction.y = 0;
+                    this.direction.normalize();
+                    
+                    // Вектор движения
+                    const moveVector = new THREE.Vector3();
+                    
+                    if (this.moveForward) {
+                        moveVector.add(this.direction.clone().multiplyScalar(currentMoveSpeed));
+                    }
+                    if (this.moveBackward) {
+                        moveVector.add(this.direction.clone().multiplyScalar(-currentMoveSpeed));
+                    }
+                    if (this.moveLeft) {
+                        const leftVector = new THREE.Vector3();
+                        leftVector.crossVectors(this.direction, this.camera.up).normalize();
+                        moveVector.add(leftVector.multiplyScalar(-currentMoveSpeed));
+                    }
+                    if (this.moveRight) {
+                        const rightVector = new THREE.Vector3();
+                        rightVector.crossVectors(this.direction, this.camera.up).normalize();
+                        moveVector.add(rightVector.multiplyScalar(currentMoveSpeed));
+                    }
+                    
+                    // Применяем движение с плавностью
+                    this.velocity.lerp(moveVector, 0.2);
+                    
+                    if (this.velocity.length() > 0) {
+                        const newPosition = this.player.position.clone();
+                        newPosition.add(this.velocity);
+                        
+                        // Проверяем коллизии
+                        if (!this.checkWallCollision(newPosition)) {
+                            this.player.position.copy(newPosition);
+                        }
+                    }
+                    
+                    // Обновляем индикатор скорости робота
+                    document.getElementById('speed').innerHTML = `Скорость робота: <span class="highlight">${this.robot.speed.toFixed(1)}</span>`;
+                    // Обновляем индикатор этажа
+                    document.getElementById('level').innerHTML = `Этаж: <span class="highlight">${this.currentLevel}</span>`;
+                }
+            }
+            
+            checkWallCollision(position) {
+                // Упрощенная проверка коллизий
+                const playerBox = new THREE.Box3().setFromCenterAndSize(
+                    position,
+                    new THREE.Vector3(this.playerRadius * 2, this.playerHeight, this.playerRadius * 2)
+                );
+                
+                for (const wall of this.walls) {
+                    const wallBox = new THREE.Box3().setFromObject(wall);
+                    if (playerBox.intersectsBox(wallBox)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // УЛУЧШЕННЫЙ ИИ РОБОТА - НАЧИНАЕТ ОХОТУ СРАЗУ И ОБХОДИТ СТЕНЫ
+            updateRobot() {
+                if (this.gameState !== 'playing' || isGamePaused) return;
+                
+                const distanceToPlayer = this.robot.position.distanceTo(this.player.position);
+                
+                // Дистанция поражения
+                if (distanceToPlayer < 2) {
+                    this.gameOver();
+                    return;
+                }
+                
+                // Обновляем таймеры
+                this.robotReplanTimer++;
+                
+                // Проверяем, не застрял ли робот
+                if (this.robotLastPosition) {
+                    const movedDistance = this.robot.position.distanceTo(this.robotLastPosition);
+                    if (movedDistance < 0.5) {
+                        this.robotStuckTimer++;
+                    } else {
+                        this.robotStuckTimer = 0;
+                    }
+                }
+                this.robotLastPosition = this.robot.position.clone();
+                
+                // Перепланируем маршрут каждые 2 секунды или если у нас нет маршрута, или если робот застрял
+                if (this.robotPath.length === 0 || this.robotReplanTimer > 120 || this.robotStuckTimer > 60) {
+                    this.planRobotPath();
+                    this.robotReplanTimer = 0;
+                    this.robotStuckTimer = 0;
+                }
+                
+                // Следуем по пути
+                this.followPath();
+                
+                // Плавное следование за игроком взглядом
+                this.robot.lookAt(
+                    this.player.position.x,
+                    this.robot.position.y,
+                    this.player.position.z
+                );
+            }
+            
+            // Планирование маршрута робота с обходом стен
+            planRobotPath() {
+                const robotPos = this.robot.position.clone();
+                const playerPos = this.player.position.clone();
+                
+                // Простой алгоритм поиска пути с обходом стен
+                this.robotPath = this.findPathAroundWalls(robotPos, playerPos);
+            }
+            
+            // Поиск пути обхода стен
+            findPathAroundWalls(start, target) {
+                const path = [];
+                const maxSteps = 15; // Максимальное количество шагов для поиска
+                
+                let currentPos = start.clone();
+                
+                for (let i = 0; i < maxSteps; i++) {
+                    const direction = new THREE.Vector3();
+                    direction.subVectors(target, currentPos);
+                    
+                    // Если мы близко к цели, останавливаемся
+                    if (direction.length() < 8) {
+                        path.push(target.clone());
+                        break;
+                    }
+                    
+                    direction.normalize();
+                    
+                    // Пробуем двигаться прямо к цели
+                    let nextPos = currentPos.clone();
+                    nextPos.add(direction.clone().multiplyScalar(8));
+                    
+                    if (!this.checkRobotWallCollision(nextPos)) {
+                        // Путь свободен, двигаемся прямо
+                        path.push(nextPos.clone());
+                        currentPos = nextPos;
+                    } else {
+                        // На пути стена, ищем обходной путь
+                        const sideDirections = [
+                            new THREE.Vector3(1, 0, 0),   // Вправо
+                            new THREE.Vector3(-1, 0, 0),  // Влево
+                            new THREE.Vector3(0, 0, 1),   // Вперед
+                            new THREE.Vector3(0, 0, -1),  // Назад
+                            new THREE.Vector3(1, 0, 1).normalize(),   // Вперед-вправо
+                            new THREE.Vector3(-1, 0, 1).normalize(),  // Вперед-влево
+                            new THREE.Vector3(1, 0, -1).normalize(),  // Назад-вправо
+                            new THREE.Vector3(-1, 0, -1).normalize()  // Назад-влево
+                        ];
+                        
+                        let foundPath = false;
+                        
+                        // Пробуем все направления, находим то, которое приближает к цели и свободно
+                        for (const sideDir of sideDirections) {
+                            const testPos = currentPos.clone();
+                            testPos.add(sideDir.clone().multiplyScalar(8));
+                            
+                            if (!this.checkRobotWallCollision(testPos)) {
+                                const newDirection = new THREE.Vector3();
+                                newDirection.subVectors(target, testPos);
+                                
+                                // Проверяем, что это направление приближает нас к цели
+                                if (newDirection.length() < direction.length() * 1.5) {
+                                    path.push(testPos.clone());
+                                    currentPos = testPos;
+                                    foundPath = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Если не нашли хороший обходной путь, пробуем любой свободный
+                        if (!foundPath) {
+                            for (const sideDir of sideDirections) {
+                                const testPos = currentPos.clone();
+                                testPos.add(sideDir.clone().multiplyScalar(8));
+                                
+                                if (!this.checkRobotWallCollision(testPos)) {
+                                    path.push(testPos.clone());
+                                    currentPos = testPos;
+                                    foundPath = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Если все еще не нашли путь, прерываем поиск
+                        if (!foundPath) {
+                            break;
+                        }
+                    }
+                }
+                
+                return path;
+            }
+            
+            // Следование по пути с обходом препятствий
+            followPath() {
+                if (this.robotPath.length === 0) return;
+                
+                const currentTarget = this.robotPath[0];
+                const distanceToTarget = this.robot.position.distanceTo(currentTarget);
+                
+                // Если близко к текущей цели, переходим к следующей точке
+                if (distanceToTarget < 3) {
+                    this.robotPath.shift(); // Удаляем достигнутую точку
+                    if (this.robotPath.length === 0) return;
+                }
+                
+                // Двигаемся к текущей цели
+                const direction = new THREE.Vector3();
+                direction.subVectors(currentTarget, this.robot.position);
+                
+                // Если расстояние очень мало, пропускаем
+                if (direction.length() < 0.001) {
+                    return;
+                }
+                
+                direction.normalize();
+                
+                const moveSpeed = this.robot.speed * 0.025;
+                const newPosition = this.robot.position.clone();
+                newPosition.add(direction.multiplyScalar(moveSpeed));
+                
+                // Обновляем bounding box для робота
+                this.robot.boundingBox = new THREE.Box3().setFromCenterAndSize(
+                    newPosition,
+                    new THREE.Vector3(0.8, 2, 0.6)
+                );
+                
+                if (!this.checkRobotWallCollision(newPosition)) {
+                    this.robot.position.copy(newPosition);
+                } else {
+                    // Если столкнулись со стеной, перепланируем маршрут
+                    this.robotPath = [];
+                    this.robotReplanTimer = 100;
+                }
+            }
+            
+            checkRobotWallCollision(position) {
+                // Создаем временный bounding box для проверяемой позиции
+                const robotBox = new THREE.Box3().setFromCenterAndSize(
+                    position,
+                    new THREE.Vector3(0.8, 2, 0.6)
+                );
+                
+                for (const wall of this.walls) {
+                    const wallBox = new THREE.Box3().setFromObject(wall);
+                    if (robotBox.intersectsBox(wallBox)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            updateExeFiles() {
+                let nearestFileDistance = Infinity;
+                let showProximity = false;
+                
+                this.exeFiles.forEach(file => {
+                    if (!file.userData.collected) {
+                        // Вращение файлов
+                        file.rotation.y += 0.02;
+                        
+                        // Проверка расстояния до игрока
+                        const distance = file.position.distanceTo(this.player.position);
+                        
+                        if (distance < this.proximityDistance) {
+                            nearestFileDistance = Math.min(nearestFileDistance, distance);
+                            showProximity = true;
+                        }
+                    }
+                });
+                
+                // Показываем индикатор близости
+                const proximityIndicator = document.getElementById('proximityIndicator');
+                if (showProximity && this.exeCollected < this.totalExe) {
+                    proximityIndicator.style.opacity = '1';
+                    proximityIndicator.textContent = `Близко к файлу! (${Math.round(nearestFileDistance)}м)`;
+                } else {
+                    proximityIndicator.style.opacity = '0';
+                }
+            }
+            
+            collectFile(file) {
+                if (!file.userData.collected) {
+                    file.userData.collected = true;
+                    this.exeCollected++;
+                    
+                    file.visible = false;
+                    
+                    this.showCollectNotification();
+                    
+                    this.updateFolderUI();
+                    document.getElementById('score').innerHTML = `Собрано .exe: <span class="highlight">${this.exeCollected}/${this.totalExe}</span>`;
+                    
+                    if (this.exeCollected === this.totalExe && !this.elevatorActive) {
+                        this.activateElevator();
+                    }
+                }
+            }
+            
+            showCollectNotification() {
+                const notification = document.getElementById('collectNotification');
+                notification.textContent = '+1 .exe файл!';
+                notification.style.opacity = '1';
+                
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                }, 1500);
+            }
+            
+            activateElevator() {
+                this.elevatorActive = true;
+                this.createElevator();
+                
+                // Показываем сообщение о завершении уровня
+                document.getElementById('completedFiles').textContent = this.exeCollected;
+                document.getElementById('completedTime').textContent = this.gameTime;
+                document.getElementById('levelComplete').classList.remove('hidden');
+                this.controls.unlock();
+                document.body.style.cursor = 'default';
+            }
+            
+            checkElevator() {
+                if (this.elevatorActive && this.elevator) {
+                    const distance = this.player.position.distanceTo(this.elevator.position);
+                    
+                    if (distance < 5) {
+                        this.levelUp();
+                    }
+                }
+            }
+            
+            levelUp() {
+                this.gameState = 'levelUp';
+                this.controls.unlock();
+                
+                document.getElementById('nextLevelNumber').textContent = this.currentLevel + 1;
+                document.getElementById('nextLevelFiles').textContent = 5;
+                document.getElementById('levelUpScreen').classList.remove('hidden');
+                
+                document.body.style.cursor = 'default';
+            }
+            
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    if (this.gameState === 'playing' && !isGamePaused) {
+                        this.gameTime++;
+                        document.getElementById('timer').innerHTML = `Время: <span class="highlight">${this.gameTime}</span>`;
+                    }
+                }, 1000);
+            }
+            
+            gameOver() {
+                this.gameState = 'gameOver';
+                this.controls.unlock();
+                
+                document.getElementById('finalFiles').textContent = this.exeCollected;
+                document.getElementById('finalTime').textContent = this.gameTime;
+                document.getElementById('finalLevel').textContent = this.currentLevel;
+                document.getElementById('gameOver').classList.remove('hidden');
+                
+                document.body.style.cursor = 'default';
+                clearInterval(this.timerInterval);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (this.gameState === 'playing') {
+                    this.updatePlayer();
+                    this.updateRobot();
+                    this.updateExeFiles();
+                    this.checkElevator();
+                    
+                    // Обновляем карту, если она видима
+                    if (this.mapVisible) {
+                        this.drawMap();
+                    }
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Глобальные функции для UI
+        let game;
+        
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            // Скрываем курсор при начале игры
+            document.body.style.cursor = 'none';
+            
+            // Создаем новую игру с полным сбросом состояния
+            game = new EscapeFromRobot3D(1);
+            isGamePaused = false;
+        }
+        
+        function startNextLevel() {
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            // Скрываем курсор при начале следующего уровня
+            document.body.style.cursor = 'none';
+            
+            // Создаем новую игру с полным сбросом состояния
+            game = new EscapeFromRobot3D(game.currentLevel + 1);
+            isGamePaused = false;
+        }
+        
+        function continueToNextLevel() {
+            document.getElementById('levelComplete').classList.add('hidden');
+            // Скрываем курсор при продолжении игры
+            document.body.style.cursor = 'none';
+            if (game && game.gameState === 'playing') {
+                game.controls.lock();
+            }
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOver').classList.add('hidden');
+            document.getElementById('levelComplete').classList.add('hidden');
+            // Скрываем курсор при перезапуске игры
+            document.body.style.cursor = 'none';
+            
+            // Создаем новую игру с полным сбросом состояния
+            game = new EscapeFromRobot3D(1);
+            isGamePaused = false;
+        }
+        
+        function hideMap() {
+            if (game) {
+                game.mapVisible = false;
+                document.getElementById('mapScreen').classList.add('hidden');
+                if (game.gameState === 'playing' && !isGamePaused) {
+                    game.controls.lock();
+                    document.body.style.cursor = 'none';
+                }
+            }
+        }
+        
+        // Инициализация при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            // Показываем главное меню
+            document.getElementById('mainMenu').classList.remove('hidden');
+            // Убеждаемся, что курсор виден в меню
+            document.body.style.cursor = 'default';
+        });
+    </script>
+</body>
+</html>
