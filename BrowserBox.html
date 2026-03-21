@@ -37,13 +37,33 @@
 
         .game-card { background: rgba(240, 230, 255, 0.65); border: 1px solid rgba(160, 100, 255, 0.25); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px; transition: all 0.25s; cursor: pointer; backdrop-filter: blur(6px); }
         .game-card:hover { transform: translateY(-4px); border-color: #9a50e0; box-shadow: 0 8px 32px rgba(140, 80, 220, 0.2); }
-        .game-card-img { width: 100%; height: 160px; object-fit: cover; border-radius: 6px; background: #d8c8f0; }
+        .game-card-img { width: 100%; object-fit: cover; border-radius: 6px; background: #d8c8f0; }
         .game-card-img-placeholder { width: 100%; height: 160px; border-radius: 6px; background: rgba(200, 170, 255, 0.35); display: flex; align-items: center; justify-content: center; font-size: 48px; }
         .game-card-title { font-size: 17px; font-weight: 600; color: #1a6fd4; }
         .game-card-desc { font-size: 13px; color: #5a3d8a; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .game-card-meta { font-size: 12px; color: #8060b0; }
         .game-card-btn { background: linear-gradient(135deg, #8a40d0, #b060f0); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
         .game-card-btn:hover { background: linear-gradient(135deg, #9a50e0, #c070ff); box-shadow: 0 4px 12px rgba(140, 60, 220, 0.35); }
+        .game-card-btn-dl { background: linear-gradient(135deg, #1a6fd4, #3a9fff); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 4px; text-decoration: none; display: inline-block; }
+        .game-card-btn-dl:hover { background: linear-gradient(135deg, #2a7fe4, #50b0ff); box-shadow: 0 4px 12px rgba(30, 100, 220, 0.35); }
+        .game-card-btns { display: flex; gap: 8px; }
+
+        .top3-block { background: linear-gradient(145deg, rgba(255, 210, 100, 0.25), rgba(255, 180, 50, 0.15)); border: 1px solid rgba(255, 180, 50, 0.4); border-radius: 12px; padding: 24px; margin-bottom: 32px; backdrop-filter: blur(8px); }
+        .top3-block h2 { font-size: 20px; color: #7a4a00; margin-bottom: 16px; }
+        .top3-list { display: flex; flex-direction: column; gap: 10px; }
+        .top3-item { display: flex; align-items: center; gap: 14px; background: rgba(255, 240, 180, 0.5); border: 1px solid rgba(255, 180, 50, 0.3); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s; }
+        .top3-item:hover { background: rgba(255, 230, 140, 0.7); transform: translateX(4px); box-shadow: 0 4px 16px rgba(200, 130, 0, 0.15); }
+        .top3-rank { font-size: 26px; width: 36px; text-align: center; flex-shrink: 0; }
+        .top3-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: rgba(200, 170, 100, 0.3); }
+        .top3-img-placeholder { width: 60px; height: 60px; border-radius: 8px; background: rgba(200, 170, 100, 0.3); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+        .top3-info { flex: 1; min-width: 0; }
+        .top3-title { font-size: 15px; font-weight: 700; color: #1a6fd4; }
+        .top3-desc { font-size: 12px; color: #7a5a20; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+        .top3-btn { background: linear-gradient(135deg, #f0a020, #f0c040); color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+        .top3-btn:hover { background: linear-gradient(135deg, #f0b030, #f0d050); box-shadow: 0 4px 10px rgba(200, 130, 0, 0.3); }
+        .top3-btn-dl { background: linear-gradient(135deg, #1a6fd4, #3a9fff); color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; flex-shrink: 0; text-decoration: none; display: inline-block; }
+        .top3-btn-dl:hover { background: linear-gradient(135deg, #2a7fe4, #50b0ff); box-shadow: 0 4px 10px rgba(30, 100, 220, 0.3); }
+        .top3-btns { display: flex; gap: 6px; flex-shrink: 0; }
 
         .empty-state { color: #7050a0; text-align: center; padding: 60px 20px; grid-column: 1/-1; font-size: 15px; }
 
@@ -82,6 +102,12 @@
             .hero h1 { font-size: 28px; }
             .games-grid { grid-template-columns: 1fr; }
             .header { flex-direction: column; align-items: flex-start; }
+            .top3-item { flex-wrap: wrap; flex-direction: column; }
+            .top3-img {width: 70%; height: auto;}
+            .top3-btns { width: 100%; justify-content: stretch; }
+            .top3-btn, .top3-btn-dl { flex: 1; text-align: center; }
+            .game-card-btns { flex-direction: column; }
+            .game-card-btn, .game-card-btn-dl { width: 100%; text-align: center; }
         }
     </style>
 </head>
@@ -110,6 +136,11 @@
                     <div class="stat-label">Игр</div>
                 </div>
             </div>
+        </div>
+
+        <div class="top3-block" id="top3-block" style="display:none;">
+            <h2>🏆 Топ 3 игры</h2>
+            <div class="top3-list" id="top3-list"></div>
         </div>
 
         <div class="section-header">
@@ -152,6 +183,7 @@
             if (!res.ok) throw new Error('Не удалось загрузить games/index.json');
             allGames = await res.json();
             renderHome();
+            renderTop3();
             renderAll();
             document.getElementById('stat-total').textContent = allGames.length;
         } catch (e) {
@@ -165,6 +197,32 @@
     // ==================== РЕНДЕРИНГ ====================
     function renderHome() {
         document.getElementById('grid-home').innerHTML = buildCards(allGames.slice(0, 6));
+    }
+
+    function renderTop3() {
+        const medals = ['🥇', '🥈', '🥉'];
+        const top = allGames.filter(g => g.top3).slice(0, 3);
+        const block = document.getElementById('top3-block');
+        if (!top.length) { block.style.display = 'none'; return; }
+        block.style.display = 'block';
+        document.getElementById('top3-list').innerHTML = top.map((g, i) => {
+            const img = g.image
+                ? `<img class="top3-img" src="games/${esc(g.image)}" alt="${esc(g.title)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="top3-img-placeholder" style="display:none;">🎮</div>`
+                : `<div class="top3-img-placeholder">🎮</div>`;
+            return `
+            <div class="top3-item" onclick="openGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">
+                <div class="top3-rank">${medals[i] || '🏅'}</div>
+                ${img}
+                <div class="top3-info">
+                    <div class="top3-title">${esc(g.title)}</div>
+                    <div class="top3-desc">${esc(g.description || '')}</div>
+                </div>
+                <div class="top3-btns">
+                    <button class="top3-btn" onclick="event.stopPropagation(); openGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">▶ Играть</button>
+                    <a class="top3-btn-dl" href="games/${esc(g.file)}" download onclick="event.stopPropagation()">⬇ Скачать</a>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     function renderAll() {
@@ -188,13 +246,20 @@
                 <div class="game-card-title">${esc(g.title)}</div>
                 <div class="game-card-desc">${esc(g.description || '')}</div>
                 <div class="game-card-meta">📅 ${g.date || ''}</div>
-                <button class="game-card-btn" onclick="event.stopPropagation(); openGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">▶ Играть</button>
+                <div class="game-card-btns">
+                    <button class="game-card-btn" onclick="event.stopPropagation(); openGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">▶ Играть</button>
+                    <a class="game-card-btn-dl" href="games/${esc(g.file)}" download onclick="event.stopPropagation()">⬇ Скачать</a>
+                </div>
             </div>`;
         }).join('');
     }
 
     // ==================== ОТКРЫТИЕ ИГРЫ ====================
     function openGame(game) {
+        if (window.innerWidth <= 640) {
+            window.open('games/' + game.file, '_blank');
+            return;
+        }
         const thumb = game.image
             ? `<img src="games/${esc(game.image)}" alt="${esc(game.title)}" style="width:100%;object-fit:cover;border-radius:8px;margin-bottom:12px;" onerror="this.style.display='none'">`
             : '';
@@ -205,6 +270,7 @@
             <iframe class="game-frame" src="games/${esc(game.file)}" allowfullscreen></iframe>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <a class="btn btn-green" href="games/${esc(game.file)}" target="_blank">🔗 Открыть в новой вкладке</a>
+                <a class="btn" style="background:linear-gradient(135deg,#1a6fd4,#3a9fff);color:white;" href="games/${esc(game.file)}" download>⬇ Скачать</a>
                 <button class="btn btn-outline" onclick="closeModal()">Закрыть</button>
             </div>
         `;
