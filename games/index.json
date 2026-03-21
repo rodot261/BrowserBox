@@ -4,20 +4,23 @@
     "file": "escape-guard.html",
     "description": "Это игра - убеги от охранника",
     "image": "escape-guard.png",
-    "date": "2026-03-15"
+    "date": "2026-03-15",
+    "top3": true
   },
   {
-      "title": "The snake",
+    "title": "The snake",
     "file": "The snake.html",
     "description": "Это игра - где мы едим мандарины",
     "image": "Snake.png",
-    "date": "2026-03-15"
+    "date": "2026-03-15",
+    "top3": true
   },
   {
-   "title": "побег от робота",
+    "title": "побег от робота",
     "file": "escape-robot.html",
     "description": "Это игра - где нужно собрать файлы и сбежать",
     "image": "ееее.png",
-    "date": "2026-03-20"
-}
+    "date": "2026-03-20",
+    "top3": false
+  }
 ]
